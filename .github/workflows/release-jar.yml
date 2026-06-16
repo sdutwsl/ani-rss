@@ -1,0 +1,50 @@
+name: release-jar
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-jar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: maven
+
+      - name: Build jar
+        run: |
+          mvn -B package -DskipTests --file pom.xml
+
+      - name: Prepare release metadata
+        run: |
+          version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout -f pom.xml)
+          short_sha=$(git rev-parse --short HEAD)
+          echo "tag=custom-v${version}-${short_sha}" >> "$GITHUB_ENV"
+          echo "name=custom v${version} (${short_sha})" >> "$GITHUB_ENV"
+
+      - name: Release jar
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.tag }}
+          name: ${{ env.name }}
+          make_latest: true
+          files: |
+            ani-rss-application/target/ani-rss.jar
