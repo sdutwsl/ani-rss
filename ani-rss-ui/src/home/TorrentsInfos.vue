@@ -2,8 +2,22 @@
   <el-dialog v-model="dialogVisible" center title="下载">
     <div class="torrents-container">
       <div class="torrents-header">
-        <el-radio-group v-model="sortType" @change="changeSort">
-          <el-radio-button v-for="sortType in sortTypeList" :value="sortType.value" :label="sortType.label"/>
+        <el-radio-group v-model="sortType">
+          <el-radio-button
+              v-for="item in sortTypeList"
+              :value="item.value"
+              @click="changeSort(item.value)">
+            <div class="flex-center">
+              {{ item.label }}
+              <el-icon
+                  v-if="sortType === item.value"
+                  class="el-icon--right"
+              >
+                <Top v-if="sortOrder === 'asc'"/>
+                <Bottom v-else/>
+              </el-icon>
+            </div>
+          </el-radio-button>
         </el-radio-group>
       </div>
       <el-empty v-if="!torrentsInfos.length" description="当前无下载任务" class="torrents-empty"/>
@@ -39,9 +53,12 @@
 <script setup>
 import {ref} from "vue";
 import * as http from "@/js/http.js";
+import {Bottom, Top} from "@element-plus/icons-vue";
 
 // 记录排序方式
 let sortType = ref('name')
+// 记录排序顺序 asc=正序, desc=倒序
+let sortOrder = ref('asc')
 
 let sortTypeList = [
   {
@@ -70,7 +87,13 @@ let show = () => {
 let torrentsInfos = ref([])
 
 let changeSort = (type) => {
-  sortType.value = type
+  if (sortType.value === type) {
+    // 相同排序方式，切换正序/倒序
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortType.value = type
+    sortOrder.value = 'asc'
+  }
   torrentsInfos.value = sortInfos(torrentsInfos.value)
 }
 
@@ -80,7 +103,8 @@ let sortInfos = (infos) => {
     if (value !== sortType.value) {
       continue
     }
-    return fun(infos)
+    let sorted = fun(infos)
+    return sortOrder.value === 'asc' ? sorted : sorted.reverse()
   }
   return infos;
 }
